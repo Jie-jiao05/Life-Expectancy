@@ -1,0 +1,223 @@
+---
+title: "Final Paper"
+output: html_document
+date: "2024-10-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+###used for data cleaning and extraction
+library(dplyr)
+
+
+# Read the data
+data <- read.csv("~/Desktop/Sta302 Proj/Life Expectancy Data.csv")
+
+# Remove rows with missing values
+data_1 <- na.omit(data)
+
+# Select the required columns for analysis
+data_clean <- data_1[, c("Status", "Life.expectancy", "Adult.Mortality", "Alcohol", "BMI", "infant.deaths", "percentage.expenditure","HIV.AIDS")]
+
+# Transform 'Status' column: Developing as 0, Developed as 1
+data_clean$Status <- ifelse(data_clean$Status == "Developing", 0, 1)
+
+# Save the cleaned data
+write.csv(data_clean, "~/Desktop/Sta302 Proj/cleaned_data.csv", row.names = FALSE)
+
+# Set a seed for reproducibility
+set.seed(101)
+
+# Randomly select 600 samples from the cleaned dataset
+data_sample <- data_clean[sample(nrow(data_clean), 1000), ]
+data_sample
+
+# Save the sample data to a new CSV file
+write.csv(data_sample, "~/Desktop/Sta302 Proj/sample_data.csv", row.names = FALSE)
+
+# Calculate the frequency of different Status values
+status_frequency <- table(data_sample$Status)
+
+# Print the frequency table
+status_frequency
+```
+
+
+```{r}
+# Build a linear regression model with the selected variables
+model <- lm(Life.expectancy ~ Status + Adult.Mortality + Alcohol + BMI + percentage.expenditure + infant.deaths + HIV.AIDS, data = data_sample)
+
+# Display the summary of the model
+summary(model)
+
+pairs(data_sample[, c("Life.expectancy", "Adult.Mortality", "Alcohol", "BMI", 
+                      "percentage.expenditure", "infant.deaths", "HIV.AIDS")],
+      main = "Pairwise Scatterplots of Predictor Variables",
+      pch = 19, col = "grey")  # Change point style and color
+
+
+y_hat <- fitted(model)  # Extract the fitted values from the linear model
+plot(x = y_hat, y = data_sample$Life.expectancy, 
+     main = "Response vs Fitted", 
+     xlab = "Fitted", 
+     ylab = "Life Expectancy", 
+     pch = 16, col = "blue")  # Adjust point shape and color for clarity
+abline(a = 0, b = 1, lty = 2, col = "red")  # Add a diagonal reference line
+
+
+
+```
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+# Read in the data
+data_sample <- read.csv("~/Desktop/Sta302 Proj/sample_data.csv")
+
+
+
+# Create the linear model using the original variables
+model_no_transform <- lm(Life.expectancy ~ Status + Adult.Mortality + Alcohol + BMI + percentage.expenditure + infant.deaths + HIV.AIDS, data = data_sample)
+
+# Create a base R residuals vs. fitted plot
+plot(model_no_transform, which = 1, main = "Residuals vs Fitted Plot (No Transformations)", col = "blue", pch = 16, cex = 1.2)
+abline(h = 0, col = "red", lwd = 2, lty = 2)  # Add a horizontal line at 0
+lines(lowess(fitted(model_no_transform), residuals(model_no_transform)), col = "pink", lwd = 2)  # Add a smoothed line
+
+###
+model_no_transform <- lm(Life.expectancy ~ Status + Adult.Mortality + Alcohol + BMI + percentage.expenditure + infant.deaths + HIV.AIDS, data = data_sample)
+
+# Generate the Q-Q plot for the residuals of the model
+qqnorm(residuals(model_no_transform), main = "Q-Q Plot of Residuals (No Transformations)")
+qqline(residuals(model_no_transform), col = "red", lwd = 2)  # Add a reference line
+ 
+
+ ### Below are transformed but not used in part 1, for writter only
+  
+data_sample$log_Adult.Mortality <- log(data_sample$Adult.Mortality + 1)  # Log transform of Adult Mortality
+data_sample$log_percentage.expenditure <- log(data_sample$percentage.expenditure + 1)  # Log transform of Percentage Expenditure
+data_sample$sqrt_infant.deaths <- sqrt(data_sample$infant.deaths)  # Square root transformation of Infant Deaths
+data_sample$log_HIV.AIDS <- log(data_sample$HIV.AIDS + 1)  # Log transform of HIV.AIDS
+
+# Create the linear model using transformed variables
+model_transformed <- lm(Life.expectancy ~ Status + log_Adult.Mortality + Alcohol + BMI + log_percentage.expenditure + sqrt_infant.deaths + log_HIV.AIDS, data = data_sample)
+
+# Display the summary of the transformed model
+summary(model_transformed)
+
+# Create the residuals vs. fitted plot for the new model
+plot(model_transformed, which = 1, main = "Residuals vs Fitted Plot (Transformed Variables)", col = "blue", pch = 16, cex = 1.2)
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+lines(lowess(fitted(model_transformed), residuals(model_transformed)), col = "pink", lwd = 2)
+
+```
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+# replace NULL with appropriate values to be used in y and x axes of plot respectively.
+library(ggplot2)
+library(gridExtra)
+
+# Fit the linear model if not already done
+# model <- lm(Life.expectancy ~ Status + Adult.Mortality + Alcohol + BMI + percentage.expenditure + infant.deaths + HIV.AIDS, data = data_sample)
+residuals <- model$residuals  # Assuming model is already fitted
+
+# Create ggplot objects for each histogram
+
+# 1. Histogram of Residuals with Smooth Line
+hist_residuals <- ggplot(data.frame(residuals), aes(x = residuals)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", color = "black") +
+  geom_density(color = "red", size = 1) +
+  labs(title = "Histogram of Residuals with Smooth Line", x = "Residuals") +
+  theme_minimal()
+
+# 2. Histogram of Adult Mortality
+hist_adult_mortality <- ggplot(data_sample, aes(x = Adult.Mortality)) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "black") +
+  labs(title = "Histogram of Adult Mortality", x = "Adult Mortality") +
+  theme_minimal()
+
+# 3. Histogram of Alcohol Consumption
+hist_alcohol <- ggplot(data_sample, aes(x = Alcohol)) +
+  geom_histogram(bins = 30, fill = "lightgreen", color = "black") +
+  labs(title = "Histogram of Alcohol Consumption", x = "Alcohol Consumption") +
+  theme_minimal()
+
+# 4. Histogram of Percentage Expenditure
+hist_percentage_expenditure <- ggplot(data_sample, aes(x = percentage.expenditure)) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "black") +
+  labs(title = "Distribution of Percentage Expenditure", x = "Percentage Expenditure") +
+  theme_minimal()
+
+# 5. Histogram of Infant Deaths
+hist_infant_deaths <- ggplot(data_sample, aes(x = infant.deaths)) +
+  geom_histogram(bins = 30, fill = "lightgoldenrod", color = "black") +
+  labs(title = "Histogram of Infant Deaths", x = "Infant Deaths") +
+  theme_minimal()
+
+# 6. Histogram of HIV/AIDS
+hist_hiv <- ggplot(data_sample, aes(x = HIV.AIDS)) +
+  geom_histogram(bins = 30, fill = "lightcyan", color = "black") +
+  labs(title = "Histogram of HIV/AIDS Impact", x = "HIV/AIDS Impact") +
+  theme_minimal()
+
+# 7. Box plot of BMI
+boxplot_bmi <- ggplot(data_sample, aes(y = BMI)) +
+  geom_boxplot(fill = "lightgray", color = "black") +
+  coord_flip() +  # Make it horizontal
+  labs(title = "Box Plot of BMI", y = "BMI") +
+  theme_minimal()
+
+# Arrange all plots in a grid layout
+grid.arrange(hist_residuals, hist_adult_mortality, hist_alcohol, 
+             hist_percentage_expenditure, hist_infant_deaths, 
+             hist_hiv, boxplot_bmi, ncol = 2)
+
+```
+
+```{r}
+## Including Plots
+library(ggplot2)
+library(gridExtra)
+
+plot1 <- ggplot(data_sample, aes(x = BMI, y = Life.expectancy)) +
+  geom_point(color = "grey") +
+  geom_smooth(method = "lm", col = "lightblue") +
+  labs(title = "Life Expectancy VS BMI", x = "BMI", y = "Life Expectancy") +
+  theme_minimal()
+
+plot2 <- ggplot(data_sample, aes(x = Adult.Mortality, y = Life.expectancy)) +
+  geom_point(color = "grey") +
+  geom_smooth(method = "lm", col = "lightblue") +
+  labs(title = "Life Expectancy VS Adult Mortality", x = "Adult Mortality", y = "Life Expectancy") +
+  theme_minimal()
+
+plot3 <- ggplot(data_sample, aes(x = infant.deaths, y = Life.expectancy)) +
+  geom_point(color = "grey") +
+  geom_smooth(method = "lm", col = "lightblue") +
+  labs(title = "Life Expectancy VS Infant Deaths", x = "Infant Deaths", y = "Life Expectancy") +
+  theme_minimal()
+
+plot4 <- ggplot(data_sample, aes(x = HIV.AIDS, y = Life.expectancy)) +
+  geom_point(color = "grey") +
+  geom_smooth(method = "lm", col = "lightblue") +
+  labs(title = "Life Expectancy VS HIV/AIDS", x = "HIV/AIDS", y = "Life Expectancy") +
+  theme_minimal()
+
+plot5 <- ggplot(data_sample, aes(x = percentage.expenditure, y = Life.expectancy)) +
+  geom_point(color = "grey") +
+  geom_smooth(method = "lm", col = "lightblue") +
+  labs(title = "Life Expectancy VS Percentage Expenditure", x = "Percentage Expenditure", y = "Life Expectancy") +
+  theme_minimal()
+
+# Arrange the plots in a grid layout with 2 columns
+grid.arrange(plot1, plot2, plot3, plot4, plot5, ncol = 2)
+```
+
+```{r}
+
+### wait for part 2 
+```
